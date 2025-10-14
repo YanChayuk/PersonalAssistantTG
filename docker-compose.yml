@@ -1,0 +1,28 @@
+version: "3.8"
+services:
+  assistant:
+    build: .
+    container_name: assistant_personal
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERPAPI_KEY=${SERPAPI_KEY}
+      - OPENWEATHER_KEY=${OPENWEATHER_KEY}
+      - GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH}
+      - CALENDAR_ID=${CALENDAR_ID}
+      - CHROMA_DIR=${CHROMA_DIR:-./chroma_db}
+      - SQLITE_DB=${SQLITE_DB:-./data/memory.db}
+      - PORT=8080
+    volumes:
+      - ./data:/app/data
+      - ./chroma_db:/app/chroma_db
+      - ./credentials:/app/credentials
+    network_mode: bridge
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

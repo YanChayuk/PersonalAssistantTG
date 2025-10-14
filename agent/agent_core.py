@@ -1,4 +1,4 @@
-import os, openai, asyncio, logging
+import os, asyncio, logging
 from .memory import Memory
 from .vstore import VStore
 from .tools.web_search import WebSearchTool
@@ -8,8 +8,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
 
 class AgentCore:
     def __init__(self):
@@ -99,12 +97,14 @@ class AgentCore:
             
             if OPENAI_API_KEY:
                 try:
-                    resp = openai.ChatCompletion.create(
+                    from openai import OpenAI
+                    client = OpenAI(api_key=OPENAI_API_KEY)
+                    resp = client.chat.completions.create(
                         model='gpt-3.5-turbo',
                         messages=[{'role':'user','content':prompt}],
                         max_tokens=400
                     )
-                    return resp['choices'][0]['message']['content'].strip()
+                    return resp.choices[0].message.content.strip()
                 except Exception as e:
                     self.logger.exception('LLM error')
                     return f'LLM error: {e}'

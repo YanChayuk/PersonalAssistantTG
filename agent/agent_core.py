@@ -13,12 +13,14 @@ if OPENAI_API_KEY:
 
 class AgentCore:
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.memory = Memory(db_path=os.getenv('SQLITE_DB','./data/memory.db'))
         self.vstore = VStore(chroma_dir=os.getenv('CHROMA_DIR','./chroma_db'))
-        self.search = WebSearchTool(api_key=os.getenv('SERPAPI_KEY'))
+        zenserp_key = os.getenv('ZENSERP_KEY')
+        self.logger.info(f"ZENSERP_KEY loaded: {'Yes' if zenserp_key else 'No'}")
+        self.search = WebSearchTool(api_key=zenserp_key)
         self.weather = WeatherTool(api_key=os.getenv('OPENWEATHER_KEY'))
         self.calendar = GoogleCalendarTool(creds_path=os.getenv('GOOGLE_CREDENTIALS_PATH'), calendar_id=os.getenv('CALENDAR_ID'))
-        self.logger = logging.getLogger(__name__)
         # Track active user sessions
         self.active_sessions = set()
     def health_check(self):
@@ -59,6 +61,7 @@ class AgentCore:
                 except Exception:
                     return 'Неверный формат. Используй: calendar:list:7'
                 return await self.calendar.list_events(days)
+            
             if low.startswith('seed:'):
                 # seed:demo
                 arg = t.split(':',1)[1].strip()
@@ -66,6 +69,22 @@ class AgentCore:
                     added = self.seed_chroma_demo()
                     return f'Добавлено {added} документов в векторное хранилище.'
                 return 'Неизвестный seed. Используй: seed:demo'
+            if low.startswith('calendar:test'):
+                # Test calendar configuration
+                if not self.calendar.configured:
+                    return 'Google Calendar не настроен. Проверьте GOOGLE_CREDENTIALS_PATH и CALENDAR_ID.'
+                try:
+                    # Try to list calendars to test access
+                    def _test_access():
+                        return self.calendar.service.calendarList().list().execute()
+                    result = await asyncio.to_thread(_test_access)
+                    calendars = result.get('items', [])
+                    if calendars:
+                        return f'✅ Google Calendar подключен. Доступно календарей: {len(calendars)}'
+                    else:
+                        return '⚠️ Google Calendar подключен, но календари не найдены.'
+                except Exception as e:
+                    return f'❌ Ошибка доступа к Google Calendar: {e}'
             
             # Generic conversation with context isolation per user
             docs = self.vstore.search(text, k=3)
@@ -110,8 +129,11 @@ class AgentCore:
         added = 0
         for doc_id, text in demo_docs.items():
             try:
-                self.vstore.add(doc_id, text, meta={'source': 'demo'})
-                added += 1
+                # Check if document already exists to avoid warnings
+                existing = self.vstore.search(text, k=1)
+                if not existing:
+                    self.vstore.add(doc_id, text, meta={'source': 'demo'})
+                    added += 1
             except Exception:
                 self.logger.exception('Failed to add document to VStore')
         # Выполним тестовый поиск, чтобы прогреть индекс

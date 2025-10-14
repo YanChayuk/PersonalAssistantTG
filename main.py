@@ -33,6 +33,7 @@ search:<запрос> — поиск в интернете
 weather:<город> — погода
 calendar:add:<ISOdatetime>|<duration_minutes>|<title> — добавить событие
 calendar:list:<days> — показать события
+calendar:test — проверить настройку Google Calendar
 
 🔄 Бот поддерживает множественные чаты одновременно!"""
     await msg.reply(help_text)

@@ -5,6 +5,8 @@ class VStore:
     def __init__(self, chroma_dir='./chroma_db'):
         os.makedirs(chroma_dir, exist_ok=True)
         # New ChromaDB API - no Settings needed
+        # Disable telemetry to avoid errors
+        os.environ['ANONYMIZED_TELEMETRY'] = 'False'
         self.client = chromadb.PersistentClient(path=chroma_dir)
         try:
             self.col = self.client.get_collection('assistant_docs')

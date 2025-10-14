@@ -8,19 +8,29 @@ class WebSearchTool:
 
     async def search(self, query):
         if not self.api_key:
-            return f"[Search mock] Что искать: {query} — (подключите SERPAPI_KEY для реального поиска)."
-        params = {"engine": "google", "q": query, "api_key": self.api_key}
+            return f"[Search mock] Что искать: {query} — (подключите ZENSERP_KEY для реального поиска)."
+        
+        url = "https://app.zenserp.com/api/v2/search"
+        params = {"q": query}
+        headers = {"apikey": self.api_key}
+        
         try:
             def _do_request():
-                r = requests.get('https://serpapi.com/search.json', params=params, timeout=8)
+                r = requests.get(url, params=params, headers=headers, timeout=8)
                 r.raise_for_status()
                 return r.json()
 
             data = await asyncio.to_thread(_do_request)
             snippets = []
-            for item in data.get('organic_results', [])[:3]:
-                title = item.get('title'); link = item.get('link'); snippet = item.get('snippet') or ''
+            
+            # ZenSerp API structure
+            organic_results = data.get('organic', [])
+            for item in organic_results[:3]:
+                title = item.get('title', '')
+                link = item.get('url', '')
+                snippet = item.get('description', '')
                 snippets.append(f"{title}\n{snippet}\n{link}")
+            
             return '\n\n'.join(snippets) if snippets else 'Ничего не найдено.'
         except Exception as e:
             logger.exception("WebSearchTool.search failed")

@@ -6,7 +6,15 @@
 ## Быстрый старт (Ubuntu 22.04)
 1. Скопируйте репозиторий на сервер, например `/opt/assistant-personal`.
 2. Положите JSON сервисного аккаунта в `/opt/assistant-personal/credentials/google_service.json`.
-3. Скопируйте `.env.example` -> `.env` и заполните переменные (TELEGRAM_BOT_TOKEN, GOOGLE_CREDENTIALS_PATH, CALENDAR_ID и т.д.).
+3. Создайте файл `.env` и заполните переменные:
+   ```env
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+   ZENSERP_KEY=363de5b0-a940-11f0-a723-235492112ea0
+   OPENWEATHER_KEY=your_openweather_api_key_here
+   GOOGLE_CREDENTIALS_PATH=./credentials/google_service.json
+   CALENDAR_ID=your_calendar_id_here
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
 4. Запустите: `docker-compose up --build -d`
 5. Для systemd: отредактируйте `systemd/assistant.service` путь `WorkingDirectory` и `ExecStart`, затем:  
    ```bash
@@ -19,7 +27,7 @@
 1. Проверьте Telegram команды:
    - `/help` — список команд, наличие `/seed`
    - `/health` — состояние сервисов
-   - `search:пример запроса` — реальные результаты при наличии `SERPAPI_KEY`
+   - `search:пример запроса` — реальные результаты при наличии `ZENSERP_KEY`
    - `weather:Москва` — реальные данные при наличии `OPENWEATHER_KEY`
    - `calendar:add:2025-10-20T15:00:00|60|Встреча` — добавление события (UTC)
    - `calendar:list:7` — список ближайших событий
@@ -47,4 +55,4 @@
 2. GOOGLE_CREDENTIALS_PATH — путь до JSON сервисного аккаунта.
 3. CALENDAR_ID — id календаря (в Integrate calendar).
 4. OPENAI_API_KEY (опционально) — для LLM.
-5. SERPAPI_KEY, OPENWEATHER_KEY (опционально).
+5. ZENSERP_KEY, OPENWEATHER_KEY (опционально).

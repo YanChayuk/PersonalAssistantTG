@@ -37,6 +37,8 @@ class GoogleCalendarTool:
             return f"Событие добавлено: {ev.get('htmlLink')}"
         except Exception as e:
             self.logger.exception('Calendar add_event failed')
+            if '404' in str(e) or 'Not Found' in str(e):
+                return f'Ошибка: Календарь не найден. Проверьте CALENDAR_ID и права доступа сервисного аккаунта. Ошибка: {e}'
             return f'Ошибка добавления события: {e}'
     async def list_events(self, days=7):
         if not self.configured:
@@ -65,4 +67,6 @@ class GoogleCalendarTool:
             return '\n'.join(out)
         except Exception as e:
             self.logger.exception('Calendar list_events failed')
+            if '404' in str(e) or 'Not Found' in str(e):
+                return f'Ошибка: Календарь не найден. Проверьте CALENDAR_ID и права доступа сервисного аккаунта. Ошибка: {e}'
             return f'Ошибка при получении событий: {e}'

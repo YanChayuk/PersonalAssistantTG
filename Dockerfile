@@ -9,5 +9,6 @@ RUN apt-get update \
 
 COPY . .
 ENV PYTHONUNBUFFERED=1
+ENV MCP_ENABLED=1
 
 CMD ["sh", "start.sh"]

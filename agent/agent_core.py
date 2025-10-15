@@ -1,9 +1,10 @@
 import os, asyncio, logging
 from .memory import Memory
 from .vstore import VStore
-from .tools.web_search import WebSearchTool
-from .tools.weather import WeatherTool
-from .tools.google_calendar import GoogleCalendarTool
+from .mcp_client import MCPClient
+from .tools.mcp_search import MCPSearchTool
+from .tools.mcp_weather import MCPWeatherTool
+from .tools.mcp_calendar import MCPCalendarTool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,20 +15,18 @@ class AgentCore:
         self.logger = logging.getLogger(__name__)
         self.memory = Memory(db_path=os.getenv('SQLITE_DB','./data/memory.db'))
         self.vstore = VStore(chroma_dir=os.getenv('CHROMA_DIR','./chroma_db'))
-        zenserp_key = os.getenv('ZENSERP_KEY')
-        self.logger.info(f"ZENSERP_KEY loaded: {'Yes' if zenserp_key else 'No'}")
-        self.search = WebSearchTool(api_key=zenserp_key)
-        self.weather = WeatherTool(api_key=os.getenv('OPENWEATHER_KEY'))
-        self.calendar = GoogleCalendarTool(creds_path=os.getenv('GOOGLE_CREDENTIALS_PATH'), calendar_id=os.getenv('CALENDAR_ID'))
+        # MCP client and tools
+        self.mcp = MCPClient()
+        self.search = MCPSearchTool(self.mcp)
+        self.weather = MCPWeatherTool(self.mcp)
+        self.calendar = MCPCalendarTool(self.mcp)
         # Track active user sessions
         self.active_sessions = set()
     def health_check(self):
         ok = []
         ok.append(f"Memory: {'OK' if self.memory.ping() else 'FAIL'}")
         ok.append(f"VStore: {'OK' if self.vstore.ping() else 'FAIL'}")
-        ok.append(f"Search: {'configured' if self.search.api_key else 'mock'}")
-        ok.append(f"Weather: {'configured' if self.weather.api_key else 'mock'}")
-        ok.append(f"Calendar: {'configured' if self.calendar.configured else 'not configured'}")
+        ok.append(f"MCP: {'configured' if self.mcp.is_configured() else 'not configured'}")
         ok.append(f"Active sessions: {len(self.active_sessions)}")
         return '\n'.join(ok)
     async def handle_message(self, user_id: str, text: str) -> str:
@@ -68,21 +67,16 @@ class AgentCore:
                     return f'Добавлено {added} документов в векторное хранилище.'
                 return 'Неизвестный seed. Используй: seed:demo'
             if low.startswith('calendar:test'):
-                # Test calendar configuration
-                if not self.calendar.configured:
-                    return 'Google Calendar не настроен. Проверьте GOOGLE_CREDENTIALS_PATH и CALENDAR_ID.'
+                # Test calendar via MCP
+                if not self.mcp.is_configured():
+                    return 'MCP для календаря не настроен. Укажите MCP_CALENDAR_SERVER.'
                 try:
-                    # Try to list calendars to test access
-                    def _test_access():
-                        return self.calendar.service.calendarList().list().execute()
-                    result = await asyncio.to_thread(_test_access)
-                    calendars = result.get('items', [])
-                    if calendars:
-                        return f'✅ Google Calendar подключен. Доступно календарей: {len(calendars)}'
-                    else:
-                        return '⚠️ Google Calendar подключен, но календари не найдены.'
+                    res = await self.calendar.list_events(1)
+                    if not res or 'Событий нет' in res:
+                        return '✅ MCP календарь доступен, но событий нет.'
+                    return f'✅ MCP календарь доступен. Пример:\n{res.splitlines()[0]}'
                 except Exception as e:
-                    return f'❌ Ошибка доступа к Google Calendar: {e}'
+                    return f'❌ Ошибка MCP календаря: {e}'
             
             # Generic conversation with context isolation per user
             docs = self.vstore.search(text, k=3)

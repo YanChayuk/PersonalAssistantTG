@@ -7,8 +7,10 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ZENSERP_KEY=${ZENSERP_KEY}
-      - OPENWEATHER_KEY=${OPENWEATHER_KEY}
+      - MCP_ENABLED=1
+      - MCP_SEARCH_SERVER=${MCP_SEARCH_SERVER}
+      - MCP_WEATHER_SERVER=${MCP_WEATHER_SERVER}
+      - MCP_CALENDAR_SERVER=${MCP_CALENDAR_SERVER}
       - GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH}
       - CALENDAR_ID=${CALENDAR_ID}
       - CHROMA_DIR=${CHROMA_DIR:-./chroma_db}
@@ -17,7 +19,6 @@ services:
     volumes:
       - ./data:/app/data
       - ./chroma_db:/app/chroma_db
-      - ./credentials:/app/credentials
     network_mode: bridge
     ports:
       - "8080:8080"
@@ -26,3 +27,40 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    depends_on:
+      - mcp-search
+      - mcp-weather
+      - mcp-calendar
+
+  mcp-search:
+    build:
+      context: .
+    command: uvicorn mcp.search.mcp_search_server:app --host 0.0.0.0 --port 8081
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - ZENSERP_KEY=${ZENSERP_KEY}
+
+  mcp-weather:
+    build:
+      context: .
+    command: uvicorn mcp.weather.mcp_weather_server:app --host 0.0.0.0 --port 8082
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      - OPENWEATHER_KEY=${OPENWEATHER_KEY}
+
+  mcp-calendar:
+    build:
+      context: .
+    command: uvicorn mcp.calendar.mcp_calendar_server:app --host 0.0.0.0 --port 8083
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials/google_service.json
+      - CALENDAR_ID=${CALENDAR_ID}
+    volumes:
+      - ./credentials:/app/credentials
